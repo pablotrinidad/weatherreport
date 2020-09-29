@@ -1,0 +1,21 @@
+on: [push, pull_request]
+name: Test & Build Store
+jobs:
+  test:
+    strategy:
+      matrix:
+        go: [ '1.12', '1.13', '1.14']
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Setup Go
+        if: success()
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Run openweather tests
+        run: |
+          cd store/openweather
+          go test -v -covermode=count
