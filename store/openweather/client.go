@@ -40,8 +40,10 @@ type currentWeatherResponse struct {
 // GetCurrentWeather returns the current weather at the given location.
 // It mirrors https://openweathermap.org/current.
 func (c *APIClient) GetCurrentWeather(lat, lon float64) (*WeatherItem, error) {
-	latS, lonS := fmt.Sprintf("%f", lat), fmt.Sprintf("%f", lon)
-	res, err := c.makeHTTPCall(currentWeatherPath, map[string]string{"lat": latS, "lon": lonS})
+	res, err := c.makeHTTPCall(currentWeatherPath, map[string]string{
+		"lat": fmt.Sprintf("%f", lat),
+		"lon": fmt.Sprintf("%f", lon),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed making HTTP call: %v", err)
 	}
@@ -58,7 +60,21 @@ func (c *APIClient) GetCurrentWeather(lat, lon float64) (*WeatherItem, error) {
 }
 
 func (c *APIClient) OneCall(lat, lon float64) (*OneCallResponse, error) {
-	panic("implement me")
+	res, err := c.makeHTTPCall(oneCallPath, map[string]string{
+		"lat":     fmt.Sprintf("%f", lat),
+		"lon":     fmt.Sprintf("%f", lon),
+		"exclude": "minutely,alerts",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed making HTTP call: %v", err)
+	}
+
+	data := &OneCallResponse{}
+	decoder := json.NewDecoder(res.Body)
+	if err := decoder.Decode(&data); err != nil {
+		return nil, fmt.Errorf("failed parsing API response: %v", err)
+	}
+	return data, nil
 }
 
 // makeHTTPCall performs an HTTP GET request to Open Weather's REST API using API access token.

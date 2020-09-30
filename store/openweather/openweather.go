@@ -28,14 +28,14 @@ type WeatherItem struct {
 // OneCallResponse represents the data returned by OpenWeather through their One Call endpoint.
 type OneCallResponse struct {
 	// Latitude of the queried location.
-	Lat float64
+	Lat float64 `json:"lat"`
 	// Longitude of the queried location.
-	Lon float64
+	Lon float64 `json:"lon"`
 
 	// Current weather at queried location.
-	Current WeatherItem
+	Current WeatherItem `json:"current"`
 	// Hourly weather items at queried location from 00:00 to 23:59 (UTC) on the same day of the request.
-	Hourly []WeatherItem
+	Hourly []WeatherItem `json:"hourly"`
 	// Daily weather items at queries location for the next 7 days (plus current).
-	Daily []WeatherItem
+	Daily []WeatherItem `json:"daily"`
 }

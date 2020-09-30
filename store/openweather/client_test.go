@@ -75,7 +75,7 @@ func TestAPIClient_GetCurrentWeather(t *testing.T) {
 		lat, lon      float64
 		apiRes        []byte
 		apiStatusCode int
-		malformURL    bool
+		malformedURL  bool
 		wantRes       *WeatherItem
 		wantErr       bool
 		closeServer   bool
@@ -143,9 +143,9 @@ func TestAPIClient_GetCurrentWeather(t *testing.T) {
 		{
 			name: "malformed URL",
 			lat:  1.0, lon: 2.0,
-			malformURL: true,
-			apiRes:     []byte(``),
-			wantErr:    true,
+			malformedURL: true,
+			apiRes:       []byte(``),
+			wantErr:      true,
 		},
 	}
 
@@ -157,7 +157,7 @@ func TestAPIClient_GetCurrentWeather(t *testing.T) {
 			} else {
 				defer server.Close()
 			}
-			client := newTestAPIClient("apiKey", "metric", server, test.malformURL)
+			client := newTestAPIClient("apiKey", "metric", server, test.malformedURL)
 			gotRes, gotErr := client.GetCurrentWeather(test.lat, test.lon)
 			if test.wantErr {
 				if gotErr == nil {
@@ -170,6 +170,47 @@ func TestAPIClient_GetCurrentWeather(t *testing.T) {
 			}
 			if diff := cmp.Diff(gotRes, test.wantRes); diff != "" {
 				t.Errorf("GetCurrentWeather(%f, %f): %v, want %v\ngot -> want diff: %s", test.lat, test.lon, gotRes, test.wantRes, diff)
+			}
+		})
+	}
+}
+
+func TestAPIClient_OneCall(t *testing.T) {
+	tests := []struct {
+		name          string
+		lat, lon      float64
+		apiRes        []byte
+		apiStatusCode int
+		malformedURL  bool
+		wantRes       *OneCallResponse
+		wantErr       bool
+		closeServer   bool
+	}{
+		{
+			name: "successful response",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := newTestServer(test.apiStatusCode, test.apiRes)
+			if test.closeServer {
+				server.Close()
+			} else {
+				defer server.Close()
+			}
+			client := newTestAPIClient("apiKey", "metric", server, test.malformedURL)
+			gotRes, gotErr := client.OneCall(test.lat, test.lon)
+			if test.wantErr {
+				if gotErr == nil {
+					t.Fatalf("OneCall(%f, %f) returned nil error, want error", test.lat, test.lon)
+				}
+				return
+			}
+			if gotErr != nil {
+				t.Fatalf("OneCall(%f, %f) returned unexpected error: %v", test.lat, test.lon, gotErr)
+			}
+			if diff := cmp.Diff(gotRes, test.wantRes); diff != "" {
+				t.Errorf("OneCall(%f, %f): %v, want %v\ngot -> want diff: %s", test.lat, test.lon, gotRes, test.wantRes, diff)
 			}
 		})
 	}
