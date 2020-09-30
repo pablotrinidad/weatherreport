@@ -57,6 +57,8 @@ func (s ConcurrentStore) fetchConcurrently(airports []Airport) error {
 			if _, ok := s.results.Load(a.Code); ok {
 				return
 			}
+			// Blocks resource such that other go routines don't perform the same query
+			s.results.Store(a.Code, nil)
 			report, err := s.ow.GetCurrentWeather(a.Latitude, a.Longitude)
 			if err != nil {
 				errors <- err

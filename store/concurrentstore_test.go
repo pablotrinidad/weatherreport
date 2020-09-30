@@ -36,32 +36,32 @@ var airports map[string]Airport = map[string]Airport{
 
 func TestConcurrentStore_GetWeatherReport(t *testing.T) {
 	tests := []struct {
-		name            string
-		queries         []Airport
-		apiMustFail     bool
-		wantMinAPICalls uint
-		wantErr         bool
-		wantRes         map[string]WeatherReport
+		name         string
+		queries      []Airport
+		apiMustFail  bool
+		wantAPICalls uint
+		wantErr      bool
+		wantRes      map[string]WeatherReport
 	}{
 		{
-			name:            "empty airport list",
-			queries:         []Airport{},
-			wantMinAPICalls: 0,
-			wantErr:         false,
-			wantRes:         map[string]WeatherReport{},
+			name:         "empty airport list",
+			queries:      []Airport{},
+			wantAPICalls: 0,
+			wantErr:      false,
+			wantRes:      map[string]WeatherReport{},
 		},
 		{
-			name:            "single-element airport list",
-			queries:         []Airport{airports["TLC"]},
-			wantMinAPICalls: 1,
-			wantErr:         false,
-			wantRes:         map[string]WeatherReport{"TLC": fixedWeatherReport},
+			name:         "single-element airport list",
+			queries:      []Airport{airports["TLC"]},
+			wantAPICalls: 1,
+			wantErr:      false,
+			wantRes:      map[string]WeatherReport{"TLC": fixedWeatherReport},
 		},
 		{
-			name:            "multiple unique airports",
-			queries:         []Airport{airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"]},
-			wantMinAPICalls: 4,
-			wantErr:         false,
+			name:         "multiple unique airports",
+			queries:      []Airport{airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"]},
+			wantAPICalls: 4,
+			wantErr:      false,
 			wantRes: map[string]WeatherReport{
 				"TLC": fixedWeatherReport,
 				"MTY": fixedWeatherReport,
@@ -79,8 +79,8 @@ func TestConcurrentStore_GetWeatherReport(t *testing.T) {
 				airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
 				airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
 			},
-			wantMinAPICalls: 4,
-			wantErr:         false,
+			wantAPICalls: 4,
+			wantErr:      false,
 			wantRes: map[string]WeatherReport{
 				"TLC": fixedWeatherReport,
 				"MTY": fixedWeatherReport,
@@ -89,12 +89,12 @@ func TestConcurrentStore_GetWeatherReport(t *testing.T) {
 			},
 		},
 		{
-			name:            "failed API call",
-			queries:         []Airport{airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"]},
-			apiMustFail:     true,
-			wantMinAPICalls: 1,
-			wantErr:         true,
-			wantRes:         nil,
+			name:         "failed API call",
+			queries:      []Airport{airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"]},
+			apiMustFail:  true,
+			wantAPICalls: 1,
+			wantErr:      true,
+			wantRes:      nil,
 		},
 	}
 	for _, test := range tests {
@@ -109,8 +109,8 @@ func TestConcurrentStore_GetWeatherReport(t *testing.T) {
 			if gotErr != nil && !test.wantErr {
 				t.Fatalf("GetWeatherReport(%v)\n returned unexpexted error: %v", test.queries, gotErr)
 			}
-			if test.wantMinAPICalls > api.GetCurrentWeatherCalls {
-				t.Errorf("GetWeatherReport(%v)\n called %d times Open Weather API, want %d calls at most", test.queries, api.GetCurrentWeatherCalls, test.wantMinAPICalls)
+			if test.wantAPICalls != api.GetCurrentWeatherCalls {
+				t.Errorf("GetWeatherReport(%v)\n called %d times Open Weather API, want %d calls", test.queries, api.GetCurrentWeatherCalls, test.wantAPICalls)
 			}
 			if diff := cmp.Diff(gotRes, test.wantRes); !test.wantErr && diff != "" {
 				t.Errorf("GetWeatherReport(%v)\n: %v, want %v;\ndiff got -> want:\n %s ", test.queries, gotRes, test.wantRes, diff)
