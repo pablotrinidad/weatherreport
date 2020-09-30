@@ -28,6 +28,6 @@ _You can use the command `export VAR_NAME=VAR_VALUE`_
 
 #### Building and running
 
-1. Place the source under `$GOPATH/github.com/pablotrinidad/weathereport`.
+1. Place the source under `$GOPATH/src/github.com/pablotrinidad/weathereport`.
 2. cd into `cli`, i.e: `cd cli/`
-2. Run the app with `go run .`.
+2. Run the app with `go run . -in $DATASET_FILE`.
