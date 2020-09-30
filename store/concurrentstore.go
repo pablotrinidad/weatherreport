@@ -31,7 +31,7 @@ func (s ConcurrentStore) GetWeatherReport(airports []Airport) (map[string]Weathe
 	data := make(map[string]WeatherReport)
 	s.results.Range(func(key, value interface{}) bool {
 		code := key.(string)
-		report := value.(openweather.WeatherItem)
+		report := value.(*openweather.WeatherItem)
 		data[code] = WeatherReport{
 			Lat:             report.Lat,
 			Lon:             report.Lon,
@@ -48,8 +48,8 @@ func (s ConcurrentStore) GetWeatherReport(airports []Airport) (map[string]Weathe
 func (s ConcurrentStore) fetchConcurrently(airports []Airport) error {
 	errors := make(chan error)
 	wgDone := make(chan bool)
-
 	var wg sync.WaitGroup
+
 	for _, a := range airports {
 		wg.Add(1)
 		go func(a Airport) {
