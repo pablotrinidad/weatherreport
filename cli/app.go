@@ -50,7 +50,7 @@ func (a *app) MAGIC() error {
 		fmt.Printf("\t%s\n", k)
 		fmt.Printf("\t\tTemp: %.2f°C\n", v.Temp)
 		fmt.Printf("\t\tFeels like: %.2f°C\n", v.FeelsLike)
-		fmt.Printf("\t\tHumidity: %d\n", v.Humidity)
+		fmt.Printf("\t\tHumidity: %d%%\n", v.Humidity)
 		fmt.Printf("\t\tObservation time: %s\n", v.ObservationTime)
 	}
 	fmt.Println("MAGIC ENDS")
