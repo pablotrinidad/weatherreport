@@ -15,7 +15,7 @@ jobs:
           go-version: ${{ matrix.go }}
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Run openweather tests
+      - name: Run tests
         run: |
-          cd store/openweather
-          go test -v -covermode=count
+          cd store/
+          go test ./... -v -covermode=count
