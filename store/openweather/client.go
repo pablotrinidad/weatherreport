@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	baseURL            = "https://api.openweathermap.org/data/2.5"
+	baseURL            = "https://api.openweathermap.org/data/2.5/"
 	currentWeatherPath = "weather"
 	oneCallPath        = "onecall"
 )
@@ -29,7 +29,7 @@ func NewAPIClient(apiKey, units string) (*APIClient, error) {
 	if _, ok := map[string]bool{"standard": true, "metric": true, "imperial": true}[units]; !ok {
 		return nil, fmt.Errorf("got invalid units value %s, want one of standard, metric, or imperial", units)
 	}
-	return &APIClient{apiKey: apiKey, units: units, apiURL: baseURL}, nil
+	return &APIClient{apiKey: apiKey, units: units, apiURL: baseURL, client: &http.Client{}}, nil
 }
 
 type currentWeatherResponse struct {
@@ -41,8 +41,9 @@ type currentWeatherResponse struct {
 // It mirrors https://openweathermap.org/current.
 func (c *APIClient) GetCurrentWeather(lat, lon float64) (*WeatherItem, error) {
 	res, err := c.makeHTTPCall(currentWeatherPath, map[string]string{
-		"lat": fmt.Sprintf("%f", lat),
-		"lon": fmt.Sprintf("%f", lon),
+		"lat":   fmt.Sprintf("%f", lat),
+		"lon":   fmt.Sprintf("%f", lon),
+		"units": c.units,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed making HTTP call: %v", err)
