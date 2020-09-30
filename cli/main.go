@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -15,13 +16,17 @@ func main() {
 		os.Exit(1)
 	}
 	app := newApp(deps)
+	var datasetLocation string
+	flag.StringVar(&datasetLocation, "in", "", "File dataset location")
+	flag.Parse()
 
-	if err := app.loadDataset(); err != nil {
+	airports, err := app.loadDataset(datasetLocation)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed loading tickets dataset:\n\t%v\n", err)
 		os.Exit(1)
 	}
 
-	if err := app.MAGIC(); err != nil {
+	if err := app.MAGIC(airports); err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot execute main operation:\n\t%v\n", err)
 		os.Exit(1)
 	}

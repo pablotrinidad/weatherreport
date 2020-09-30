@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/pablotrinidad/weatherreport/store"
 )
@@ -25,23 +28,38 @@ func newApp(deps *appDependencies) *app {
 	return &app{deps: deps}
 }
 
-func (a *app) loadDataset() error {
+func (a *app) loadDataset(src string) ([]store.Airport, error) {
 	fmt.Println("LOADING DATASET...")
-	return nil
+	file, err := os.Open(src)
+	if err != nil {
+		return nil, err
+	}
+	reader := csv.NewReader(file)
+
+	vals, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	airports := make([]store.Airport, (len(vals)-1)*2)
+	for i, row := range vals[1:] {
+		coords := map[int]float64{2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0}
+		for k := range coords {
+			c, err := strconv.ParseFloat(row[k], 64)
+			if err != nil {
+				return nil, err
+			}
+			coords[k] = c
+		}
+		airports[i*2] = store.Airport{Code: row[0], Latitude: coords[2], Longitude: coords[3]}
+		airports[i*2+1] = store.Airport{Code: row[1], Latitude: coords[4], Longitude: coords[5]}
+	}
+
+	return airports, nil
 }
 
-func (a *app) MAGIC() error {
+func (a *app) MAGIC(airports []store.Airport) error {
 	fmt.Println("MAGIC STARTS")
-	airports := []store.Airport{
-		airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
-		airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
-		airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
-		airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
-		airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
-		airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
-		airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
-		airports["TLC"], airports["MTY"], airports["MEX"], airports["TAM"],
-	}
 	data, err := a.deps.store.GetWeatherReport(airports)
 	if err != nil {
 		return err
@@ -53,6 +71,7 @@ func (a *app) MAGIC() error {
 		fmt.Printf("\t\tHumidity: %d%%\n", v.Humidity)
 		fmt.Printf("\t\tObservation time: %s\n", v.ObservationTime)
 	}
+	fmt.Println(len(data))
 	fmt.Println("MAGIC ENDS")
 	return nil
 }
