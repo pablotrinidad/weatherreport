@@ -1,9 +1,23 @@
 package store
 
+import "time"
+
 // Store exposes a series of methods for querying weather information of specific cities.
+// It abstracts away cache layer and API access.
 type Store interface {
-	// GetWeatherReport for a specific latitude/longitude pair at a given date and time.
-	GetWeatherReport(lat, lon float64, datetime string) (WeatherReport, error)
+	// GetWeatherReport returns the weather report for the given airports on the current date and time.
+	// The returned map contains the airport code as the key and a weather report instance as value.
+	GetWeatherReport([]Airport) (map[string]WeatherReport, error)
+}
+
+// Airport data.
+type Airport struct {
+	// Airport code, e.g: code for Mexico City International Airport is MEX.
+	Code string
+	// Latitude of the airport location.
+	Latitude float64
+	// Longitude of the airport location.
+	Longitude float64
 }
 
 // WeatherReport holds the information of an weather query for a specific latitude, longitude pair.
@@ -17,7 +31,7 @@ type WeatherReport struct {
 	// FeelsLike is the weather perceived temp in celsius with two decimals precision.
 	FeelsLike float64
 	// Humidity percentage.
-	Humidity uint
+	Humidity int
 	// ObservationTime of the report in ISO 8601.
-	ObservationTime string
+	ObservationTime time.Time
 }

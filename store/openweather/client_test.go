@@ -8,10 +8,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func newTestAPIClient(apiKey, units string, server *httptest.Server, malformURL bool) API {
+func newTestAPIClient(apiKey, units string, server *httptest.Server, malformedURL bool) API {
 	c, _ := NewAPIClient(apiKey, units)
 	c.client = server.Client()
-	if malformURL {
+	if malformedURL {
 		c.apiURL = "i'm not a valid HTTP URL :D"
 	} else {
 		c.apiURL = server.URL
@@ -98,6 +98,8 @@ func TestAPIClient_GetCurrentWeather(t *testing.T) {
 			  "name": "Mountain View"
 			}`),
 			wantRes: &WeatherItem{
+				Lat:             1.0,
+				Lon:             2.0,
 				Temp:            282.55,
 				FeelsLike:       281.86,
 				Humidity:        100,
@@ -170,47 +172,6 @@ func TestAPIClient_GetCurrentWeather(t *testing.T) {
 			}
 			if diff := cmp.Diff(gotRes, test.wantRes); diff != "" {
 				t.Errorf("GetCurrentWeather(%f, %f): %v, want %v\ngot -> want diff: %s", test.lat, test.lon, gotRes, test.wantRes, diff)
-			}
-		})
-	}
-}
-
-func TestAPIClient_OneCall(t *testing.T) {
-	tests := []struct {
-		name          string
-		lat, lon      float64
-		apiRes        []byte
-		apiStatusCode int
-		malformedURL  bool
-		wantRes       *OneCallResponse
-		wantErr       bool
-		closeServer   bool
-	}{
-		{
-			name: "successful response",
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			server := newTestServer(test.apiStatusCode, test.apiRes)
-			if test.closeServer {
-				server.Close()
-			} else {
-				defer server.Close()
-			}
-			client := newTestAPIClient("apiKey", "metric", server, test.malformedURL)
-			gotRes, gotErr := client.OneCall(test.lat, test.lon)
-			if test.wantErr {
-				if gotErr == nil {
-					t.Fatalf("OneCall(%f, %f) returned nil error, want error", test.lat, test.lon)
-				}
-				return
-			}
-			if gotErr != nil {
-				t.Fatalf("OneCall(%f, %f) returned unexpected error: %v", test.lat, test.lon, gotErr)
-			}
-			if diff := cmp.Diff(gotRes, test.wantRes); diff != "" {
-				t.Errorf("OneCall(%f, %f): %v, want %v\ngot -> want diff: %s", test.lat, test.lon, gotRes, test.wantRes, diff)
 			}
 		})
 	}

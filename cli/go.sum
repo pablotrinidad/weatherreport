@@ -1,0 +1,5 @@
+github.com/google/go-cmp v0.4.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+github.com/pablotrinidad/hillcipher v0.0.0-20200315021508-94ce21d2447c h1:aCN37S7+Lg05x/hAC9CGre9QHLEVuEjG32celuwTIIY=
+github.com/pablotrinidad/hillcipher/cipher v0.0.0-20200315021508-94ce21d2447c h1:LLAxHG/BwRRxT0R2ti2e+2CNMkboWywAGGXKrP9+7TA=
+github.com/pablotrinidad/hillcipher/cipher v0.0.0-20200315021508-94ce21d2447c/go.mod h1:E9Rg4gYnOv/BopupOJL1ks/I9TeuOddf/UcTCBRAa1c=
+golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=

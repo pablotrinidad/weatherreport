@@ -7,14 +7,14 @@ type API interface {
 	// GetCurrentWeather returns the current weather at the given location.
 	// It mirrors https://openweathermap.org/current.
 	GetCurrentWeather(lat, lon float64) (*WeatherItem, error)
-
-	// OneCall returns current, hourly and daily weather report at the given location.
-	// It mirrors https://openweathermap.org/api/one-call-api with exclude: [minutely, alerts].
-	OneCall(lat, lon float64) (*OneCallResponse, error)
 }
 
 // WeatherItem holds weather information for a given observation time.
 type WeatherItem struct {
+	// Latitude of the report location.
+	Lat float64
+	// Longitude of the report location.
+	Lon float64
 	// Temperature in celsius.
 	Temp float64 `json:"temp"`
 	// FeelsLike in celsius.
@@ -23,19 +23,4 @@ type WeatherItem struct {
 	Humidity int `json:"humidity"`
 	// ObservationTime in UNIX time UTC
 	ObservationTime int `json:"dt"`
-}
-
-// OneCallResponse represents the data returned by OpenWeather through their One Call endpoint.
-type OneCallResponse struct {
-	// Latitude of the queried location.
-	Lat float64 `json:"lat"`
-	// Longitude of the queried location.
-	Lon float64 `json:"lon"`
-
-	// Current weather at queried location.
-	Current WeatherItem `json:"current"`
-	// Hourly weather items at queried location from 00:00 to 23:59 (UTC) on the same day of the request.
-	Hourly []WeatherItem `json:"hourly"`
-	// Daily weather items at queries location for the next 7 days (plus current).
-	Daily []WeatherItem `json:"daily"`
 }
