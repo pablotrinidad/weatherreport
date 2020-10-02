@@ -33,9 +33,9 @@ func NewAPIClient(apiKey, units string) (*APIClient, error) {
 	return &APIClient{apiKey: apiKey, units: units, apiURL: baseURL, client: &http.Client{}}, nil
 }
 
-// GetCurrentWeather returns the current weather at the given location.
+// GetWeatherByCoords returns the current weather at the given location.
 // It mirrors https://openweathermap.org/current.
-func (c *APIClient) GetCurrentWeather(lat, lon float64) (*WeatherItem, error) {
+func (c *APIClient) GetWeatherByCoords(lat, lon float64) (*WeatherItem, error) {
 	res, err := c.makeHTTPCall(currentWeatherPath, map[string]string{
 		"lat":   fmt.Sprintf("%f", lat),
 		"lon":   fmt.Sprintf("%f", lon),
@@ -50,7 +50,7 @@ func (c *APIClient) GetCurrentWeather(lat, lon float64) (*WeatherItem, error) {
 // GetWeatherByCityName returns the current weather at the given city name.
 func (c *APIClient) GetWeatherByCityName(cityName string) (*WeatherItem, error) {
 	res, err := c.makeHTTPCall(currentWeatherPath, map[string]string{
-		"q": cityName,
+		"q":     cityName,
 		"units": c.units,
 	})
 	if err != nil {
@@ -60,9 +60,11 @@ func (c *APIClient) GetWeatherByCityName(cityName string) (*WeatherItem, error) 
 }
 
 type currentWeatherResponse struct {
-	ObservationTime int          `json:"dt"`
-	Coordinates weatherResponseCoords `json:"coord"`
-	Data            *WeatherItem `json:"main"`
+	ObservationTime int                      `json:"dt"`
+	Coordinates     weatherResponseCoords    `json:"coord"`
+	Weather         []weatherResponseWeather `json:"weather"`
+	Data            *WeatherItem             `json:"main"`
+	CityName        string                   `json:"name"`
 }
 
 type weatherResponseCoords struct {
@@ -70,7 +72,11 @@ type weatherResponseCoords struct {
 	Lon float64 `json:"lon"`
 }
 
-func (c *APIClient) parseSuccessfulResponse(content io.ReadCloser)(*WeatherItem, error) {
+type weatherResponseWeather struct {
+	Description string `json:"main"`
+}
+
+func (c *APIClient) parseSuccessfulResponse(content io.ReadCloser) (*WeatherItem, error) {
 	data := currentWeatherResponse{}
 	decoder := json.NewDecoder(content)
 	if err := decoder.Decode(&data); err != nil {
@@ -79,7 +85,13 @@ func (c *APIClient) parseSuccessfulResponse(content io.ReadCloser)(*WeatherItem,
 	item := data.Data
 	item.Lat = data.Coordinates.Lat
 	item.Lon = data.Coordinates.Lon
+	item.CityName = data.CityName
 	item.ObservationTime = data.ObservationTime
+
+	item.Description = make([]string, len(data.Weather))
+	for i, d := range data.Weather {
+		item.Description[i] = d.Description
+	}
 	return item, nil
 }
 

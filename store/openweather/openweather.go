@@ -4,9 +4,9 @@ package openweather
 
 // API is a https://openweathermap.org/api API client.
 type API interface {
-	// GetCurrentWeather returns the current weather at the given location.
+	// GetWeatherByCoords returns the current weather at the given location.
 	// It mirrors https://openweathermap.org/current.
-	GetCurrentWeather(lat, lon float64) (*WeatherItem, error)
+	GetWeatherByCoords(lat, lon float64) (*WeatherItem, error)
 
 	// GetWeatherByCityName returns the current weather at the given city name.
 	GetWeatherByCityName(cityName string) (*WeatherItem, error)
@@ -18,12 +18,20 @@ type WeatherItem struct {
 	Lat float64
 	// Longitude of the report location.
 	Lon float64
-	// Temperature in celsius.
+	// Description is a human readable set of weather descriptions
+	Description []string
+	// CityName is the city name registered in the API dataset for the weather observation.
+	CityName string
+	// ObservationTime in UNIX time UTC
+	ObservationTime int
+	// Temp is the temperature in celsius.
 	Temp float64 `json:"temp"`
+	// MaxTemp is the maximum expected temperature for the observation time.
+	MaxTemp float64 `json:"temp_max"`
+	// MinTemp is the maximum expected temperature for the observation time.
+	MinTemp float64 `json:"temp_min"`
 	// FeelsLike in celsius.
 	FeelsLike float64 `json:"feels_like"`
 	// Humidity percentage.
 	Humidity int `json:"humidity"`
-	// ObservationTime in UNIX time UTC
-	ObservationTime int `json:"dt"`
 }

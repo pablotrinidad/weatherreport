@@ -1,85 +1,124 @@
 package store
 
 import (
-	"fmt"
-	"sync"
 	"time"
 
 	"github.com/pablotrinidad/weatherreport/store/openweather"
 )
 
-// ConcurrentStore is a concurrent Store implementation with a built-in cache layer.
-type ConcurrentStore struct {
-	// results is a concurrent-safe map for storing API results. It acts as a cache as it prevents
-	// HTTP requests from being duplicated.
-	results *sync.Map
+const maxConcurrentRequestsPerMinute = 60
 
+// ConcurrentStore is a concurrent Store implementation.
+type ConcurrentStore struct {
 	// ow is an Open Weather API client.
 	ow openweather.API
 }
 
 func NewConcurrentStore(ow openweather.API) Store {
-	return &ConcurrentStore{ow: ow, results: &sync.Map{}}
+	return &ConcurrentStore{ow: ow}
 }
 
-// GetWeatherReport returns the weather report for the given airports on the current date and time.
+// GetWeatherByAirportCode returns the weather report for the given airports on the current date and time.
 // The returned map contains the airport code as the key and a weather report instance as value.
-func (s ConcurrentStore) GetWeatherReport(airports []Airport) (map[string]WeatherReport, error) {
-	if err := s.fetchConcurrently(airports); err != nil {
-		return nil, err
-	}
-	data := make(map[string]WeatherReport)
-	s.results.Range(func(key, value interface{}) bool {
-		code := key.(string)
-		report := value.(*openweather.WeatherItem)
-		data[code] = WeatherReport{
-			Lat:             report.Lat,
-			Lon:             report.Lon,
-			Temp:            report.Temp,
-			FeelsLike:       report.FeelsLike,
-			Humidity:        report.Humidity,
-			ObservationTime: time.Unix(int64(report.ObservationTime), 0),
+func (s *ConcurrentStore) GetWeatherByAirportCode(airports []Airport) map[string]WeatherReport {
+	requests := make(map[string]func() (*openweather.WeatherItem, error))
+	for i := range airports {
+		a := airports[i]
+		// Using a map (hash table) avoids repeating API requests for the same airport code.
+		requests[a.Code] = func() (*openweather.WeatherItem, error) {
+			return s.ow.GetWeatherByCoords(a.Latitude, a.Longitude)
 		}
-		return true
-	})
-	return data, nil
+	}
+	results := s.fetchConcurrently(requests)
+	return s.parseResults(results)
 }
 
-func (s ConcurrentStore) fetchConcurrently(airports []Airport) error {
-	errors := make(chan error)
-	wgDone := make(chan bool)
-	var wg sync.WaitGroup
+// GetWeatherByCityName returns the weather report for each city name. The returned map contains
+// the city name as key and a weather report instance as value.
+func (s *ConcurrentStore) GetWeatherByCityName(cities []string) map[string]WeatherReport {
+	requests := make(map[string]func() (*openweather.WeatherItem, error))
+	for i := range cities {
+		cityName := cities[i]
+		// Using a map (hash table) avoids repeating API requests for the same city name.
+		requests[cityName] = func() (*openweather.WeatherItem, error) {
+			return s.ow.GetWeatherByCityName(cityName)
+		}
+	}
+	results := s.fetchConcurrently(requests)
+	return s.parseResults(results)
+}
 
-	for _, a := range airports {
-		wg.Add(1)
-		go func(a Airport) {
-			defer wg.Done()
-			if _, ok := s.results.Load(a.Code); ok {
-				return
+// parseResults .....
+func (s *ConcurrentStore) parseResults(results map[string]*requestResult) map[string]WeatherReport {
+	data := make(map[string]WeatherReport)
+	for key, val := range results {
+		if val.err != nil {
+			data[key] = WeatherReport{
+				Failed:      true,
+				FailMessage: "failed getting weather data from external services",
 			}
-			// Blocks resource such that other go routines don't perform the same query
-			s.results.Store(a.Code, nil)
-			report, err := s.ow.GetCurrentWeather(a.Latitude, a.Longitude)
-			if err != nil {
-				errors <- err
-			}
-			s.results.Store(a.Code, report)
-		}(a)
+			continue
+		}
+		data[key] = WeatherReport{
+			Lat:             val.data.Lat,
+			Lon:             val.data.Lon,
+			Description:     val.data.Description,
+			CityName:        val.data.CityName,
+			Temp:            val.data.Temp,
+			MaxTemp:         val.data.MaxTemp,
+			MinTemp:         val.data.MinTemp,
+			FeelsLike:       val.data.FeelsLike,
+			Humidity:        val.data.Humidity,
+			ObservationTime: time.Unix(int64(val.data.ObservationTime), 0),
+			Failed:          false,
+		}
+	}
+	return data
+}
+
+type requestResult struct {
+	data *openweather.WeatherItem
+	key  string
+	err  error
+}
+
+// fetchConcurrently something
+func (s ConcurrentStore) fetchConcurrently(requests map[string]func() (*openweather.WeatherItem, error)) map[string]*requestResult {
+	cn := make(chan *requestResult, len(requests))
+	fns := make([]func(), len(requests))
+	i := 0
+	for key := range requests {
+		f := requests[key]
+		fns[i] = func() {
+			report, err := f()
+			cn <- &requestResult{data: report, err: err, key: key}
+		}
+		i++
 	}
 
-	// Goroutine to wait until wait group is done.
-	go func() {
-		wg.Wait()
-		close(wgDone)
-	}()
-
-	// Wait until either wait group is done or an error is received trough the errors channel.
-	select {
-	case <-wgDone:
-		// All goroutines finished successfully
-		return nil
-	case err := <-errors:
-		close(errors)
-		return fmt.Errorf("an error ocurred while communicating with Open Weather API: %v", err)
+	// Concurrently process requests in batched of up to 60 requests per minute
+	start := 0
+	breakNext := false
+	for !breakNext {
+		end := start + maxConcurrentRequestsPerMinute
+		if end > len(requests) {
+			breakNext = true
+			end = len(requests)
+		}
+		callConcurrent(fns[start:end])
+		start = end
+		if end-start == maxConcurrentRequestsPerMinute {
+			time.Sleep(1 * time.Minute)
+		}
 	}
+	close(cn)
+
+	// Read results
+	results := make(map[string]*requestResult, len(requests))
+	for r := range cn {
+		if _, ok := results[r.key]; !ok {
+			results[r.key] = r
+		}
+	}
+	return results
 }

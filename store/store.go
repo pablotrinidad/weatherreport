@@ -7,7 +7,11 @@ import "time"
 type Store interface {
 	// GetWeatherReport returns the weather report for the given airports on the current date and time.
 	// The returned map contains the airport code as the key and a weather report instance as value.
-	GetWeatherReport([]Airport) (map[string]WeatherReport, error)
+	GetWeatherByAirportCode([]Airport) map[string]WeatherReport
+
+	// GetWeatherByCityName returns the weather report for each city name. The returned map contains
+	// the city name as key and a weather report instance as value.
+	GetWeatherByCityName([]string) map[string]WeatherReport
 }
 
 // Airport data.
@@ -26,12 +30,23 @@ type WeatherReport struct {
 	Lat float64
 	// Longitude of the report location.
 	Lon float64
+	// Description is a human readable set of weather descriptions
+	Description []string
+	// CityName is the city name registered in the API dataset for the weather observation.
+	CityName string
 	// Temperature in celsius with two decimals precision.
-	Temp float64
-	// FeelsLike is the weather perceived temp in celsius with two decimals precision.
-	FeelsLike float64
+	Temp float64 `json:"temp"`
+	// MaxTemp is the maximum expected temperature for the observation time.
+	MaxTemp float64 `json:"temp_max"`
+	// MinTemp is the maximum expected temperature for the observation time.
+	MinTemp float64 `json:"temp_min"`
+	// FeelsLike in celsius.
+	FeelsLike float64 `json:"feels_like"`
 	// Humidity percentage.
-	Humidity int
-	// ObservationTime of the report in ISO 8601.
+	Humidity        int `json:"humidity"`
 	ObservationTime time.Time
+	// Failed indicates that the API request was unsuccessful
+	Failed bool
+	// FailMessage is the reason of failure.
+	FailMessage string
 }

@@ -1,6 +1,7 @@
 package openweather
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,6 +25,22 @@ func newTestServer(wantStatusCode int, wantRes []byte) *httptest.Server {
 		w.WriteHeader(wantStatusCode)
 		w.Write(wantRes)
 	}))
+}
+
+func compareResults(t *testing.T, caller string, gotRes, wantRes *WeatherItem, gotErr error, wantErr bool) {
+	t.Helper()
+	if wantErr {
+		if gotErr == nil {
+			t.Fatalf("%s returned nil error, want error", caller)
+		}
+		return
+	}
+	if gotErr != nil {
+		t.Fatalf("%s returned unexpected error: %v", caller, gotErr)
+	}
+	if diff := cmp.Diff(gotRes, wantRes); diff != "" {
+		t.Errorf("%s: %v, want %v\ngot -> want diff: %s", caller, gotRes, wantRes, diff)
+	}
 }
 
 func TestNewAPIClient(t *testing.T) {
@@ -69,10 +86,11 @@ func TestNewAPIClient(t *testing.T) {
 	}
 }
 
-func TestAPIClient_GetCurrentWeather(t *testing.T) {
+func TestAPIClient_OWCurrent(t *testing.T) {
 	tests := []struct {
 		name          string
 		lat, lon      float64
+		cityName      string
 		apiRes        []byte
 		apiStatusCode int
 		malformedURL  bool
@@ -81,157 +99,83 @@ func TestAPIClient_GetCurrentWeather(t *testing.T) {
 		closeServer   bool
 	}{
 		{
-			name: "successful call",
-			lat:  37.39, lon: -122.08,
-			apiRes: []byte(`{
-				"coord": {
-					"lat": 37.39,
-					"lon": -122.08
-				},
-				"main": {
-					"temp": 282.55,
-					"feels_like": 281.86,
-					"temp_min": 280.37,
-					"temp_max": 284.26,
-					"pressure": 1023,
-					"humidity": 100
-			  	},
-				"dt": 1560350645,
-				"timezone": -25200,
-				"id": 420006353,
-				"name": "Mountain View"
-			}`),
-			wantRes: &WeatherItem{
-				Lat:             37.39,
-				Lon:             -122.08,
-				Temp:            282.55,
-				FeelsLike:       281.86,
-				Humidity:        100,
-				ObservationTime: 1560350645,
-			},
-			apiStatusCode: http.StatusOK,
-		},
-		{
-			name: "malformed response",
-			lat:  1.0, lon: 2.0,
-			apiRes:        []byte(`I am not a valid JSON`),
-			apiStatusCode: http.StatusOK,
-			wantErr:       true,
-		},
-		{
-			name: "exceeded requests limit",
-			lat:  1.0, lon: 2.0,
-			apiRes: []byte(`{
-				"cod": 429,
-				"message": "Your account is temporary blocked due to exceeding of requests limitation of your subscription type. 
-				Please choose the proper subscription http://openweathermap.org/price"
-			}`),
-			apiStatusCode: http.StatusTooManyRequests,
-			wantErr:       true,
-		},
-		{
-			name: "invalid API key",
-			lat:  1.0, lon: 2.0,
-			apiRes: []byte(`{
-				"cod": 401,
-				"message": "Invalid API key. Please see http://openweathermap.org/faq#error401 for more info."
-			}`),
-			apiStatusCode: http.StatusUnauthorized,
-			wantErr:       true,
-		},
-		{
-			name: "unreachable service",
-			lat:  1.0, lon: 2.0,
-			closeServer: true,
-			apiRes:      []byte(``),
-			wantErr:     true,
-		},
-		{
-			name: "malformed URL",
-			lat:  1.0, lon: 2.0,
-			malformedURL: true,
-			apiRes:       []byte(``),
-			wantErr:      true,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			server := newTestServer(test.apiStatusCode, test.apiRes)
-			if test.closeServer {
-				server.Close()
-			} else {
-				defer server.Close()
-			}
-			client := newTestAPIClient("apiKey", "metric", server, test.malformedURL)
-			gotRes, gotErr := client.GetCurrentWeather(test.lat, test.lon)
-			if test.wantErr {
-				if gotErr == nil {
-					t.Fatalf("GetCurrentWeather(%f, %f) returned nil error, want error", test.lat, test.lon)
-				}
-				return
-			}
-			if gotErr != nil {
-				t.Fatalf("GetCurrentWeather(%f, %f) returned unexpected error: %v", test.lat, test.lon, gotErr)
-			}
-			if diff := cmp.Diff(gotRes, test.wantRes); diff != "" {
-				t.Errorf("GetCurrentWeather(%f, %f): %v, want %v\ngot -> want diff: %s", test.lat, test.lon, gotRes, test.wantRes, diff)
-			}
-		})
-	}
-}
-
-
-func TestAPIClient_GetWeatherByCityName(t *testing.T) {
-	tests := []struct {
-		name          string
-		cityName     string
-		apiRes        []byte
-		apiStatusCode int
-		malformedURL  bool
-		wantRes       *WeatherItem
-		wantErr       bool
-		closeServer   bool
-	}{
-		{
-			name: "successful call",
+			name:     "successful response",
 			cityName: "Mountain View",
+			lat:      37.39, lon: -122.08,
+			apiStatusCode: http.StatusOK,
 			apiRes: []byte(`{
+				"base": "stations",
+				"clouds": {
+					"all": 90
+				},
+				"cod": 200,
 				"coord": {
 					"lat": 37.39,
 					"lon": -122.08
 				},
-				"dt": 1601657590,
+				"dt": 1601662295,
 				"id": 5375480,
 				"main": {
-					"feels_like": 23.25,
-					"humidity": 43,
+					"feels_like": 27.8,
+					"humidity": 30,
 					"pressure": 1016,
-					"temp": 23.77,
-					"temp_max": 25,
-					"temp_min": 21
+					"temp": 28.87,
+					"temp_max": 31.67,
+					"temp_min": 27
 				},
-				"name": "Mountain View"
-			}`),
+				"name": "Mountain View",
+				"sys": {
+					"country": "US",
+					"id": 5845,
+					"sunrise": 1601647503,
+					"sunset": 1601689779,
+					"type": 1
+				},
+				"timezone": -25200,
+				"visibility": 4023,
+				"weather": [
+					{
+						"description": "smoke",
+						"icon": "50d",
+						"id": 711,
+						"main": "Smoke"
+					},
+					{
+						"description": "haze",
+						"icon": "50d",
+						"id": 721,
+						"main": "Haze"
+					}
+				],
+				"wind": {
+					"deg": 328,
+					"speed": 1.42
+				}
+				}`),
 			wantRes: &WeatherItem{
 				Lat:             37.39,
 				Lon:             -122.08,
-				Temp:            23.77,
-				FeelsLike:       23.25,
-				Humidity:        43,
-				ObservationTime: 1601657590,
+				Description:     []string{"Smoke", "Haze"},
+				CityName:        "Mountain View",
+				ObservationTime: 1601662295,
+				Temp:            28.87,
+				MaxTemp:         31.67,
+				MinTemp:         27,
+				FeelsLike:       27.8,
+				Humidity:        30,
 			},
-			apiStatusCode: http.StatusOK,
 		},
 		{
 			name: "malformed response",
-			cityName: "Mountain View",
+			lat:  1.0, lon: 2.0,
+			cityName:      "Mountain View",
 			apiRes:        []byte(`I am not a valid JSON`),
 			apiStatusCode: http.StatusOK,
 			wantErr:       true,
 		},
 		{
 			name: "exceeded requests limit",
+			lat:  1.0, lon: 2.0,
 			cityName: "Mountain View",
 			apiRes: []byte(`{
 				"cod": 429,
@@ -243,6 +187,7 @@ func TestAPIClient_GetWeatherByCityName(t *testing.T) {
 		},
 		{
 			name: "invalid API key",
+			lat:  1.0, lon: 2.0,
 			cityName: "Mountain View",
 			apiRes: []byte(`{
 				"cod": 401,
@@ -253,30 +198,32 @@ func TestAPIClient_GetWeatherByCityName(t *testing.T) {
 		},
 		{
 			name: "unreachable service",
-			cityName: "Mountain View",
+			lat:  1.0, lon: 2.0,
+			cityName:    "Mountain View",
 			closeServer: true,
 			apiRes:      []byte(``),
 			wantErr:     true,
 		},
 		{
 			name: "malformed URL",
-			cityName: "Mountain View",
+			lat:  1.0, lon: 2.0,
+			cityName:     "Mountain View",
 			malformedURL: true,
 			apiRes:       []byte(``),
 			wantErr:      true,
 		},
 		{
 			name: "city name is not valid",
+			lat:  1.0, lon: 2.0,
 			cityName: "Mountain View",
 			apiRes: []byte(`{
 				"cod": "404",
 				"message": "city not found"
 			}`),
 			apiStatusCode: http.StatusNotFound,
-			wantErr:      true,
+			wantErr:       true,
 		},
 	}
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			server := newTestServer(test.apiStatusCode, test.apiRes)
@@ -286,19 +233,12 @@ func TestAPIClient_GetWeatherByCityName(t *testing.T) {
 				defer server.Close()
 			}
 			client := newTestAPIClient("apiKey", "metric", server, test.malformedURL)
-			gotRes, gotErr := client.GetWeatherByCityName(test.cityName)
-			if test.wantErr {
-				if gotErr == nil {
-					t.Fatalf("GetWeatherByCityName(%s) returned nil error, want error", test.cityName)
-				}
-				return
-			}
-			if gotErr != nil {
-				t.Fatalf("GetWeatherByCityName(%s) returned unexpected error: %v", test.cityName, gotErr)
-			}
-			if diff := cmp.Diff(gotRes, test.wantRes); diff != "" {
-				t.Errorf("GetWeatherByCityName(%s): %v, want %v\ngot -> want diff: %s", test.cityName, gotRes, test.wantRes, diff)
-			}
+
+			coordsRes, coordsErr := client.GetWeatherByCoords(test.lat, test.lon)
+			compareResults(t, fmt.Sprintf("GetWeatherByCoords(%f, %f)", test.lat, test.lon), coordsRes, test.wantRes, coordsErr, test.wantErr)
+
+			nameRes, nameErr := client.GetWeatherByCityName(test.cityName)
+			compareResults(t, fmt.Sprintf("GetWeatherByCityName(%s)", test.cityName), nameRes, test.wantRes, nameErr, test.wantErr)
 		})
 	}
 }
