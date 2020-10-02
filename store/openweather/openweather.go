@@ -7,6 +7,9 @@ type API interface {
 	// GetCurrentWeather returns the current weather at the given location.
 	// It mirrors https://openweathermap.org/current.
 	GetCurrentWeather(lat, lon float64) (*WeatherItem, error)
+
+	// GetWeatherByCityName returns the current weather at the given city name.
+	GetWeatherByCityName(cityName string) (*WeatherItem, error)
 }
 
 // WeatherItem holds weather information for a given observation time.
