@@ -119,7 +119,7 @@ func (c *APIClient) makeHTTPCall(path string, q map[string]string) (*http.Respon
 }
 
 type apiError struct {
-	Code    int    `json:"cod"`
+	Code    string `json:"cod"`
 	Message string `json:"message"`
 }
 
