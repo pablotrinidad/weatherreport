@@ -11,11 +11,12 @@ const maxConcurrentRequestsPerMinute = 60
 // ConcurrentStore is a concurrent Store implementation.
 type ConcurrentStore struct {
 	// ow is an Open Weather API client.
-	ow openweather.API
+	ow    openweather.API
+	usage APIUsage
 }
 
 func NewConcurrentStore(ow openweather.API) Store {
-	return &ConcurrentStore{ow: ow}
+	return &ConcurrentStore{ow: ow, usage: APIUsage{}}
 }
 
 // GetWeatherByAirportCode returns the weather report for the given airports on the current date and time.
@@ -25,6 +26,7 @@ func (s *ConcurrentStore) GetWeatherByAirportCode(airports []Airport) map[string
 	for i := range airports {
 		a := airports[i]
 		// Using a map (hash table) avoids repeating API requests for the same airport code.
+		// Acts like a very primitive cache layer.
 		requests[a.Code] = func() (*openweather.WeatherItem, error) {
 			return s.ow.GetWeatherByCoords(a.Latitude, a.Longitude)
 		}
@@ -39,7 +41,8 @@ func (s *ConcurrentStore) GetWeatherByCityName(cities []string) map[string]Weath
 	requests := make(map[string]func() (*openweather.WeatherItem, error))
 	for i := range cities {
 		cityName := cities[i]
-		// Using a map (hash table) avoids repeating API requests for the same city name.
+		// Using a map (hash table) avoids repeating API requests for the same airport code.
+		// Acts like a very primitive cache layer.
 		requests[cityName] = func() (*openweather.WeatherItem, error) {
 			return s.ow.GetWeatherByCityName(cityName)
 		}
@@ -48,7 +51,6 @@ func (s *ConcurrentStore) GetWeatherByCityName(cities []string) map[string]Weath
 	return s.parseResults(results)
 }
 
-// parseResults .....
 func (s *ConcurrentStore) parseResults(results map[string]*requestResult) map[string]WeatherReport {
 	data := make(map[string]WeatherReport)
 	for key, val := range results {
@@ -57,6 +59,7 @@ func (s *ConcurrentStore) parseResults(results map[string]*requestResult) map[st
 				Failed:      true,
 				FailMessage: "failed getting weather data from external services",
 			}
+			s.usage.FailedCalls++
 			continue
 		}
 		data[key] = WeatherReport{
@@ -72,6 +75,7 @@ func (s *ConcurrentStore) parseResults(results map[string]*requestResult) map[st
 			ObservationTime: time.Unix(int64(val.data.ObservationTime), 0),
 			Failed:          false,
 		}
+		s.usage.SuccessfulCalls++
 	}
 	return data
 }
@@ -87,8 +91,9 @@ func (s ConcurrentStore) fetchConcurrently(requests map[string]func() (*openweat
 	cn := make(chan *requestResult, len(requests))
 	fns := make([]func(), len(requests))
 	i := 0
-	for key := range requests {
-		f := requests[key]
+	for k := range requests {
+		// Unpacking is required to avoid re-usage of references.
+		f, key := requests[k], k
 		fns[i] = func() {
 			report, err := f()
 			cn <- &requestResult{data: report, err: err, key: key}
@@ -121,4 +126,8 @@ func (s ConcurrentStore) fetchConcurrently(requests map[string]func() (*openweat
 		}
 	}
 	return results
+}
+
+func (s *ConcurrentStore) GetAPIUsage() APIUsage {
+	return s.usage
 }

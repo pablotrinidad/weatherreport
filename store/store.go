@@ -12,6 +12,9 @@ type Store interface {
 	// GetWeatherByCityName returns the weather report for each city name. The returned map contains
 	// the city name as key and a weather report instance as value.
 	GetWeatherByCityName([]string) map[string]WeatherReport
+
+	// GetAPIUsage returns OpenWeather API usage statistics.
+	GetAPIUsage() APIUsage
 }
 
 // Airport data.
@@ -49,4 +52,12 @@ type WeatherReport struct {
 	Failed bool
 	// FailMessage is the reason of failure.
 	FailMessage string
+}
+
+// APIUsage contains usage statistics.
+type APIUsage struct {
+	// SuccessfulCalls count.
+	SuccessfulCalls uint
+	// FailedCalls count.
+	FailedCalls uint
 }
