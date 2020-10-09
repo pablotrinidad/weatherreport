@@ -1,6 +1,7 @@
 package store
 
 import (
+	"log"
 	"time"
 
 	"github.com/pablotrinidad/weatherreport/store/openweather"
@@ -57,7 +58,7 @@ func (s *ConcurrentStore) parseResults(results map[string]*requestResult) map[st
 		if val.err != nil {
 			data[key] = WeatherReport{
 				Failed:      true,
-				FailMessage: "failed getting weather data from external services",
+				FailMessage: val.err.Error(),
 			}
 			s.usage.FailedCalls++
 			continue
@@ -86,7 +87,7 @@ type requestResult struct {
 	err  error
 }
 
-// fetchConcurrently something
+// fetchConcurrently returns the result of performing the given requests concurrently and in batches.
 func (s ConcurrentStore) fetchConcurrently(requests map[string]func() (*openweather.WeatherItem, error)) map[string]*requestResult {
 	cn := make(chan *requestResult, len(requests))
 	fns := make([]func(), len(requests))
@@ -110,11 +111,14 @@ func (s ConcurrentStore) fetchConcurrently(requests map[string]func() (*openweat
 			breakNext = true
 			end = len(requests)
 		}
+		log.Printf("\t\t...performing %d (%d pending) concurrent API calls", end-start, len(requests)-end)
 		callConcurrent(fns[start:end])
-		start = end
 		if end-start == maxConcurrentRequestsPerMinute {
+			log.Printf("\t\t\t⏳ done, waiting a minute to comply with 60 calls/minute constraint")
+			log.Printf("\t\t\tremaining time: %d minutes", (len(requests)-end)/60)
 			time.Sleep(1 * time.Minute)
 		}
+		start = end
 	}
 	close(cn)
 
@@ -128,6 +132,7 @@ func (s ConcurrentStore) fetchConcurrently(requests map[string]func() (*openweat
 	return results
 }
 
+// GetAPIUsage returns OpenWeather API usage statistics.
 func (s *ConcurrentStore) GetAPIUsage() APIUsage {
 	return s.usage
 }

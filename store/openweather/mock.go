@@ -20,12 +20,12 @@ func NewAPIMockClient(fixedWeatherItem WeatherItem) *APIMockClient {
 	}
 }
 
-// GetWeatherByCoords returns an arbitrary weather item response and increments the calls registry.
+// GetWeatherByCoords returns an arbitrary weather item response.
 func (c *APIMockClient) GetWeatherByCoords(_, _ float64) (*WeatherItem, error) {
 	return c.produceResponse()
 }
 
-// GetWeatherByCityName returns an arbitrary weather item response and increments the calls registry.
+// GetWeatherByCityName returns an arbitrary weather item response.
 func (c *APIMockClient) GetWeatherByCityName(_ string) (*WeatherItem, error) {
 	return c.produceResponse()
 }

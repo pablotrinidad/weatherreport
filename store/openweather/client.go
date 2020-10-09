@@ -11,7 +11,6 @@ import (
 const (
 	baseURL            = "https://api.openweathermap.org/data/2.5/"
 	currentWeatherPath = "weather"
-	oneCallPath        = "onecall"
 )
 
 // APIClient is an API implementation.
@@ -42,7 +41,7 @@ func (c *APIClient) GetWeatherByCoords(lat, lon float64) (*WeatherItem, error) {
 		"units": c.units,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed making HTTP call: %v", err)
+		return nil, err
 	}
 	return c.parseSuccessfulResponse(res.Body)
 }
@@ -54,7 +53,7 @@ func (c *APIClient) GetWeatherByCityName(cityName string) (*WeatherItem, error) 
 		"units": c.units,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed making HTTP call: %v", err)
+		return nil, err
 	}
 	return c.parseSuccessfulResponse(res.Body)
 }
@@ -114,7 +113,29 @@ func (c *APIClient) makeHTTPCall(path string, q map[string]string) (*http.Respon
 		return nil, err
 	}
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned non-succesful status code %d", res.StatusCode)
+		return nil, handleError(res)
 	}
 	return res, nil
+}
+
+type apiError struct {
+	Code    int    `json:"cod"`
+	Message string `json:"message"`
+}
+
+func handleError(res *http.Response) error {
+	apiError := apiError{}
+	decoder := json.NewDecoder(res.Body)
+	if err := decoder.Decode(&apiError); err != nil {
+		return fmt.Errorf("OpenWeather API returned unexpected error")
+	}
+	switch res.StatusCode {
+	case http.StatusNotFound:
+		return fmt.Errorf("resource not found: %q", apiError.Message)
+	case http.StatusTooManyRequests:
+		return fmt.Errorf("exceeded requests limit")
+	case http.StatusUnauthorized:
+		return fmt.Errorf("invalid API key")
+	}
+	return fmt.Errorf("unexpected error")
 }

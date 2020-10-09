@@ -1,3 +1,5 @@
+// Package store exposes a set of APIs and clients for accessing weather data through OpenWeather
+// services.
 package store
 
 import "time"
@@ -46,7 +48,8 @@ type WeatherReport struct {
 	// FeelsLike in celsius.
 	FeelsLike float64 `json:"feels_like"`
 	// Humidity percentage.
-	Humidity        int `json:"humidity"`
+	Humidity int `json:"humidity"`
+	// ObservationTime when the weather was measured.
 	ObservationTime time.Time
 	// Failed indicates that the API request was unsuccessful
 	Failed bool
