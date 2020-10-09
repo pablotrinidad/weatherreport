@@ -21,5 +21,8 @@
 # macOS
 .DS_Store
 
+# compiled binaries
+cli/cli
+
 # JetBrains
 .idea/

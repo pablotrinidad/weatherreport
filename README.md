@@ -40,6 +40,8 @@ _You can use the command `export VAR_NAME=VAR_VALUE`_
 of your valid .csv file (relative or absolute), and `DATASET_FORMAT` is either `1` for airports
 dataset or `2` for cities dataset.
 
+You can also just run `chmod +x run.sh && ./run.sh` (source must be under GOPATH).
+
 ### Dataset assumptions
 
 The application makes some assumptions about the data present in each dataset format. Generally

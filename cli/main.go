@@ -114,7 +114,7 @@ func printResults(results map[string]store.WeatherReport) {
 		fmt.Printf("\t\tmin: %0.2f°C\n", r.MinTemp)
 		fmt.Printf("\t\tfeels like: %0.2f°C\n", r.FeelsLike)
 		fmt.Printf("\thumidity: %d%%\n", r.Humidity)
-		fmt.Printf("\tobservation time (UTC): %v\n", r.ObservationTime)
+		fmt.Printf("\tobservation time: %v\n", r.ObservationTime)
 	}
 }
 
